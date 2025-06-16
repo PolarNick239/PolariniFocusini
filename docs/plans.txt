@@ -1,0 +1,4 @@
+try to normalize infocus votes w.r.t. how much pixels from that depth bin exists in the whole image
+wrong results on IMG_20210813_182313_debug
+IMG_20250610_203548_debug - probably we want to mask as in-focus bins lower number of bins - only bins near the bin-winner
+IMG_20250612_180614_debug - we expect the whole palm to be in focus
