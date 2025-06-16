@@ -33,10 +33,10 @@ Watch the 90-minute live “vibe-coding” session that produced this repo (**En
 ```
 @misc{polarini_2024_focusini,
   title        = {Polarini Focusini: open-source pipeline for in-focus region detection},
-  howpublished = {\url{https://github.com/<user>/PolariniFocusini}},
+  howpublished = {\url{https://github.com/PolarNick239/PolariniFocusini}},
   author       = {Poliarnyi, N.},
   year         = {2025},
-  note         = {YouTube demo: “Точка Фокуса за 90 минут”}
+  note         = {YouTube demo: “Finding Focus in Photos Using Depth Anything and DoG”}
 }
 ```
 
