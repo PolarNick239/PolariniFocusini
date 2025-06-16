@@ -31,7 +31,7 @@ Watch the 90-minute live “vibe-coding” session that produced this repo (**En
 # Please cite ⭐
 
 ```
-@misc{polarini_2024_focusini,
+@misc{poliarnyi2025,
   title        = {Polarini Focusini: open-source pipeline for in-focus region detection},
   howpublished = {\url{https://github.com/PolarNick239/PolariniFocusini}},
   author       = {Poliarnyi, N.},
