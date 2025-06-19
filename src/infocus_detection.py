@@ -11,6 +11,7 @@ import numpy as np
 from scipy.ndimage import maximum_filter
 
 import debug_visualization as dbg   # local import – same folder
+from depth_estimation import _estimate_depth
 
 
 # ──────────────────────────  core algorithm  ───────────────────────── #
@@ -82,16 +83,19 @@ def _mask_from_bins(depth: np.ndarray,
 # ──────────────────────────  public API  ───────────────────────────── #
 
 def detect_infocus_mask(image: np.ndarray,
-                        depth: np.ndarray,
+                        depth: np.ndarray | None = None,
                         *,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
                         nbins: int = 20,
                         debug_dir: str | None = None) -> np.ndarray:
     """
+    Detect the in-focus region of *image*.
+
     Parameters
     ----------
     image      : BGR uint8 image (H×W×3)
-    depth      : float32 depth map (H×W)
+    depth      : float32 depth map (H×W) – if **None**, it will be
+                 estimated on-the-fly with `_estimate_depth`
     sigmas     : Gaussian sigmas for the PoG
     nbins      : histogram bins for depth voting
     debug_dir  : if given, all intermediate artefacts are written here
@@ -100,8 +104,12 @@ def detect_infocus_mask(image: np.ndarray,
     -------
     in_focus_mask : bool ndarray of shape H×W
     """
-    h, w = image.shape[:2]
-    assert depth.shape == (h, w), "Image and depth map sizes must match"
+    # 0) obtain or verify depth-map
+    if depth is None:
+        depth = _estimate_depth(image)
+    else:
+        assert depth.shape == image.shape[:2], \
+            "Image and depth map sizes must match"
 
     # 1) grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)

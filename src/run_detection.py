@@ -15,10 +15,9 @@ for idx, fname in enumerate(filenames):
 
     stem   = os.path.splitext(fname)[0]
     image  = cv2.imread(os.path.join(DATA_DIR, fname))
-    depth  = np.load(os.path.join(DATA_DIR, f"{stem}_depth.npy"))
 
     debug_dir = os.path.join(DATA_DIR, f"{stem}_debug")
-    mask = detect_infocus_mask(image, depth,
+    mask = detect_infocus_mask(image,
                                sigmas=SIGMAS,
                                nbins=20,
                                debug_dir=debug_dir)
