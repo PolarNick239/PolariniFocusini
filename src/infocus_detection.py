@@ -47,11 +47,6 @@ def _detect_extremums(dog0: np.ndarray,
     thresh    = np.percentile(ext_vals, percentile)
     extremums = extremums_wrt_next_scale & (dog0 >= thresh)
 
-    if debug_dir is not None:
-        dbg.extremum_mask(same_scale, 'extremums_mask_right_before_threshold', debug_dir)
-        dbg.extremum_mask(extremums_wrt_next_scale, 'extremums_mask_after_wrt_next_scale', debug_dir)
-        dbg.extremum_mask(extremums, 'extremums_mask_final_wrt_threshold', debug_dir)
-
     return extremums, thresh
 
 
@@ -128,7 +123,7 @@ def detect_infocus_mask(image: np.ndarray,
     # 4) extremums (scale-space NMS)
     focus_pts, thresh = _detect_extremums(dogs[0], dogs[1], 99., debug_dir)
     if debug_dir:
-        dbg.extremum_mask(focus_pts, "points_of_focus_mask", debug_dir)
+        dbg.extremum_mask(focus_pts, "voting_points_mask", debug_dir)
         dbg.plot_dog_distribution(dogs[0][dogs[0] == dogs[0]],   # same mask
                                   [1, 25, 50, 75, 99],
                                   debug_dir)

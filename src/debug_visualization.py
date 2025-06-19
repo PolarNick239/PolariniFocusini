@@ -68,7 +68,7 @@ def plot_dog_distribution(ext_vals: np.ndarray,
     plt.title("Distribution of DoG extremum values (after NMS)")
     plt.xlabel("DoG response"); plt.ylabel("Density")
     _ensure_dir(debug_dir)
-    plt.savefig(f"{debug_dir}/04_dog_extremums_after_nms_plot_values.jpg",
+    plt.savefig(f"{debug_dir}/04_dog_extremums_distribution.jpg",
                 bbox_inches="tight", dpi=300)
     plt.close()
 
