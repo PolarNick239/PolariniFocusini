@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="200" src="/docs/.images/polarini_focusini.jpg" alt="Polarini Focusini project logo">
+  <img width="200" src="https://raw.github.com/UnicornGlade/PolariniFocusini/master/docs/.images/polarini_focusini.jpg" alt="Polarini Focusini project logo">
 </p>
 
 # Polarini Focusini
@@ -9,7 +9,7 @@ Automated **in-focus region detector** that blends monocular depth estimation wi
 # Example
 
 <p align="left">
-  <img width="400" src="/docs/.images/processing_sample.jpg" alt="Link to youtube live coding session">
+  <img width="400" src="https://raw.github.com/UnicornGlade/PolariniFocusini/master/docs/.images/processing_sample.jpg" alt="Example how in-focus part of photo is detected">
 </p>
 
 # What happens under the hood
@@ -25,7 +25,7 @@ Automated **in-focus region detector** that blends monocular depth estimation wi
 Watch the 90-minute live “vibe-coding” session that produced this repo (**English code** + **English subs** + Russian-language commentary):
 
 <p align="left">
-  <img width="400" src="/docs/.images/youtube_thumbnail.jpg" alt="Link to youtube live coding session">
+  <a href="https://www.youtube.com/playlist?list=PL5p-5hHpsHBovPGgF-U1XPFas_RFW4F8A"><img width="400" src="https://raw.github.com/UnicornGlade/PolariniFocusini/master/docs/.images/youtube_thumbnail.jpg" alt="Link to youtube live coding sessions playlist"></a>
 </p>
 
 # Please cite ⭐
@@ -33,7 +33,7 @@ Watch the 90-minute live “vibe-coding” session that produced this repo (**En
 ```
 @misc{poliarnyi2025,
   title        = {Polarini Focusini: open-source pipeline for in-focus region detection},
-  howpublished = {\url{https://github.com/PolarNick239/PolariniFocusini}},
+  howpublished = {\url{https://github.com/UnicornGlade/PolariniFocusini}},
   author       = {Poliarnyi, N.},
   year         = {2025},
   note         = {YouTube demo: “Finding Focus in Photos Using Depth Anything and DoG”}
