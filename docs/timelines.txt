@@ -1,0 +1,4 @@
+22.06.2025 +1.25 = 6.00: automatic downloading for Depth Anything v2 model weights (with caching)
+19.06.2025 +1.25 = 4.75: infering depth anything via ONNX (currently only on CPU, without lazy model weight loading)
+19.06.2025 +1.50 = 3.50: refactoring with ChatGPT + fixing bug introduced with refactoring (threshold estimation with wrong extremum mask)
+15.06.2025 +2.00 = 2.00: initial algorithm prototype with DeepSeek
