@@ -10,8 +10,8 @@ import cv2
 import numpy as np
 from scipy.ndimage import maximum_filter
 
-import debug_visualization as dbg   # local import – same folder
-from depth_estimation import _estimate_depth
+from . import debug_visualization as dbg   # local import – same folder
+from .depth_estimation import _estimate_depth
 
 
 # ──────────────────────────  core algorithm  ───────────────────────── #
