@@ -28,7 +28,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Nikolai Poliarnyi",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     url="https://github.com/PolarNick239/PolariniFocusini",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
