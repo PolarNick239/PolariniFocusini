@@ -35,7 +35,7 @@ setup(
 
     # ────────────────────────── dependencies ────────────────────────── #
     install_requires=[
-        "onnxruntime>=1.17.0",       # **mandatory** CPU runtime
+        "onnxruntime>=1.18.0",       # **mandatory** CPU runtime
         "opencv-python>=4.8.0",
         "numpy>=1.23.0",
         "scipy>=1.10.0",
