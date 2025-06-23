@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from tqdm.auto import tqdm          # auto picks the right backend (tty / notebook)
 
-from .infocus_detection import detect_infocus_mask     # re-use your pipeline
+from polarini_focusini.infocus_detection import detect_infocus_mask
 
 VALID_EXTS = (".jpg", ".jpeg", ".png")
 
