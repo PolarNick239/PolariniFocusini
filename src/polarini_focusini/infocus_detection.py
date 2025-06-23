@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import cv2
 import numpy as np
+from typing import Optional
 from scipy.ndimage import maximum_filter
 
 from . import debug_visualization as dbg   # local import – same folder
@@ -36,7 +37,7 @@ def _generate_dog(pogs: list[np.ndarray]) -> list[np.ndarray]:
 def _detect_extremums(dog0: np.ndarray,
                       dog1: np.ndarray,
                       percentile: float = 99.,
-                      debug_dir: str | None = None) -> tuple[np.ndarray, float]:
+                      debug_dir: Optional[str] = None) -> tuple[np.ndarray, float]:
     """Non-maximum suppression across scale; return boolean mask + thresh."""
     local_max  = maximum_filter(dog0, size=3, mode='constant')
     same_scale = dog0 == local_max
@@ -83,11 +84,11 @@ def _mask_from_bins(depth: np.ndarray,
 # ──────────────────────────  public API  ───────────────────────────── #
 
 def detect_infocus_mask(image: np.ndarray,
-                        depth: np.ndarray | None = None,
+                        depth: Optional[np.ndarray] = None,
                         *,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
                         nbins: int = 20,
-                        debug_dir: str | None = None) -> np.ndarray:
+                        debug_dir: Optional[str] = None) -> np.ndarray:
     """
     Detect the in-focus region of *image*.
 

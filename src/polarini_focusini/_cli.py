@@ -1,6 +1,7 @@
 """CLI entry point for the `polarini-focusini` console script."""
 import argparse
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -13,7 +14,7 @@ VALID_EXTS = (".jpg", ".jpeg", ".png")
 
 def process_dir(indir: Path, outdir: Path,
                 sigmas=(0.0, 0.75, 2.0), nbins: int = 20,
-                debug_root: Path | None = None) -> None:
+                debug_root: Optional[Path] = None) -> None:
     """
     Process all images in *indir* and write masks to *outdir*.
     If *debug_root* is given, per-image sub-folders with detailed debug
