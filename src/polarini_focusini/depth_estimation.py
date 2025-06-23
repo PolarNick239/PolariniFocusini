@@ -1,4 +1,6 @@
+from enum import Enum
 from pathlib import Path
+from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
 
 import cv2
@@ -8,36 +10,82 @@ import requests
 from tqdm.auto import tqdm
 from platformdirs import user_cache_dir   # ← cross-platform cache folder
 
+# ──────────────────────────── presets / enums ────────────────────────────────
+class DepthModel(str, Enum):
+    """Enumeration of the supported monocular depth back‑ends."""
 
-# ─────────────────────── depth-estimation utilities ──────────────────────────
+    DEPTH_ANYTHING = "depth_anything"
+    DEPTH_PRO = "depth_pro"
+
+
+# (url, (W,H), mean, std)
+_MODEL_PRESETS: Dict[DepthModel, Tuple[str, Tuple[int, int], np.ndarray, np.ndarray]] = {
+    DepthModel.DEPTH_ANYTHING: (
+        "https://huggingface.co/onnx-community/depth-anything-v2-large/resolve/main/onnx/model_q4f16.onnx",
+        (518, 518),
+        np.array([0.485, 0.456, 0.406], dtype=np.float32),
+        np.array([0.229, 0.224, 0.225], dtype=np.float32),
+    ),
+    DepthModel.DEPTH_PRO: (
+        "https://huggingface.co/onnx-community/DepthPro-ONNX/resolve/main/onnx/model_q4f16.onnx",
+        (1536, 1536),
+        np.array([0.5, 0.5, 0.5], dtype=np.float32),
+        np.array([0.5, 0.5, 0.5], dtype=np.float32),
+    ),
+}
+
+
+# ─────────────────────── depth‑estimation utilities ─────────────────────────
 @dataclass
 class DepthEstimationConfig:
-    # App metadata for platformdirs
-    app_name  : str = "PolariniFocusini"
+    """Configuration for the depth estimator.
+
+    Unspecified fields are filled from the *model* preset so the default
+    behaviour stays the same even after adding new back‑ends.
+    """
+
+    model: DepthModel = DepthModel.DEPTH_ANYTHING
+
+    # fine‑grained options (may be overridden manually)
+    model_url: Optional[str] = None
+    input_size: Optional[Tuple[int, int]] = None  # (W, H)
+    mean: Optional[np.ndarray] = None
+    std: Optional[np.ndarray] = None
+
+    # ONNX Runtime execution provider
+    provider: str = "CPUExecutionProvider"  # set to "CUDAExecutionProvider" if available
+
+    # cache organisation
+    app_name: str = "polarini_focusini"
     app_author: str = "polarnick"
 
-    # Remote weights
-    model_url: str = (
-        "https://huggingface.co/onnx-community/depth-anything-v2-large/resolve/main/onnx/model_q4f16.onnx"
-    )
+    def __post_init__(self) -> None:
+        # Populate defaults from preset
+        url, size, mean, std = _MODEL_PRESETS[self.model]
+        if self.model_url is None:
+            self.model_url = url
+        if self.input_size is None:
+            self.input_size = size
+        if self.mean is None:
+            self.mean = mean
+        if self.std is None:
+            self.std = std
 
-    # ONNX Runtime options
-    input_size: tuple[int, int] = (518, 518)  # (W, H)
-    provider  : str = "CPUExecutionProvider" # TODO support "CUDAExecutionProvider" (if available)
-
-    # ───────────── derived helpers (don’t edit) ────────────────────────────
+    # ───────────────────── derived helpers ────────────────────────────────
     @property
     def local_model_path(self) -> Path:
         """
         Per-user, per-OS cache path, e.g.
 
-        • Linux  : ~/.cache/depth-anything/model_q4f16.onnx
-        • Windows: %LOCALAPPDATA%/depth-anything/model_q4f16.onnx
-        • macOS  : ~/Library/Caches/depth-anything/model_q4f16.onnx
+        • Linux  : ~/.cache/.../model_q4f16.onnx
+        • Windows: %LOCALAPPDATA%/.../model_q4f16.onnx
+        • macOS  : ~/Library/Caches/.../model_q4f16.onnx
         """
         cache_root = Path(user_cache_dir(self.app_name, self.app_author))
-        return cache_root / Path(self.model_url).name
 
+        # Note that we want to add model name (self.model.value - i.e. depth_anything or depth_pro),
+        # so that no ONNX model weights collision happens
+        return cache_root / self.model.value / Path(self.model_url).name
 
 # ───────────────────────────── helpers ────────────────────────────────────────
 def _ensure_weights(cfg: DepthEstimationConfig) -> str:
@@ -49,23 +97,21 @@ def _ensure_weights(cfg: DepthEstimationConfig) -> str:
     str : absolute path to the ONNX file
     """
     dst = cfg.local_model_path
-    if dst.exists():                      # already cached → reuse
+    if dst.exists():
         return str(dst)
 
     dst.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Downloading depth-anything weights to {dst} …")
+    print(f"Downloading {cfg.model.value} weights to {dst} …")
 
     tmp = dst.with_suffix(dst.suffix + ".tmp")
-    with requests.get(cfg.model_url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        total = int(r.headers.get("content-length", 0))
-        bar   = tqdm(total=total, unit="B", unit_scale=True, unit_divisor=1024,
-                     desc=dst.name, leave=True)
-
-        with open(tmp, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1 MB
+    with requests.get(cfg.model_url, stream=True, timeout=60) as resp:
+        resp.raise_for_status()
+        total = int(resp.headers.get("content-length", 0))
+        bar = tqdm(total=total, unit="B", unit_scale=True, unit_divisor=1024, desc=dst.name)
+        with open(tmp, "wb") as fh:
+            for chunk in resp.iter_content(chunk_size=1 << 20):
                 if chunk:
-                    f.write(chunk)
+                    fh.write(chunk)
                     bar.update(len(chunk))
         bar.close()
 
@@ -73,49 +119,39 @@ def _ensure_weights(cfg: DepthEstimationConfig) -> str:
     return str(dst)
 
 
-# ─────────────────────────── inference API ────────────────────────────────────
-def _estimate_depth(
-    bgr: np.ndarray,
-    cfg: DepthEstimationConfig = DepthEstimationConfig(),
-) -> np.ndarray:
-    """
-    Run the ONNX depth-estimation model and return a float32 depth/disparity map
-    in the *original* image resolution.
+# ─────────────────────────── inference API ───────────────────────────────────
 
-    Parameters
-    ----------
-    bgr : uint8 H×W×3 image in OpenCV BGR order
-    cfg : DepthEstimationConfig (path, input-size, provider)
+def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None) -> np.ndarray:
+    """Estimate depth/disparity map for *bgr* using the chosen backend."""
 
-    Returns
-    -------
-    depth : float32 H×W  (same height/width as *bgr*)
-    """
-    # 0) prepare ONNX Runtime session (cached after the first call)
-    if not hasattr(_estimate_depth, "_sess"):
-        model_path = _ensure_weights(cfg)
-        opts = ort.SessionOptions(); opts.log_severity_level = 3
-        _estimate_depth._sess = ort.InferenceSession(
-            model_path, sess_options=opts, providers=[cfg.provider]
-        )
-        _estimate_depth._inp  = _estimate_depth._sess.get_inputs()[0].name
-        _estimate_depth._out  = _estimate_depth._sess.get_outputs()[0].name
+    if cfg is None:
+        cfg = DepthEstimationConfig()  # default = Depth‑Anything
 
-    # 1) preprocess
+    # 0) obtain/cached ONNX session
+    if not hasattr(_estimate_depth, "_cache"):
+        _estimate_depth._cache = {}
+
+    model_path = _ensure_weights(cfg)
+    if model_path not in _estimate_depth._cache:
+        opts = ort.SessionOptions()
+        opts.log_severity_level = 3  # quiet
+        sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cfg.provider])
+        inp_name = sess.get_inputs()[0].name
+        out_name = sess.get_outputs()[0].name
+        _estimate_depth._cache[model_path] = (sess, inp_name, out_name)
+
+    sess, inp_name, out_name = _estimate_depth._cache[model_path]
+
+    # 1) pre‑processing
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     rgb = cv2.resize(rgb, cfg.input_size, interpolation=cv2.INTER_AREA)
-
-    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-    std  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-    rgb = (rgb - mean) / std
-    x   = np.transpose(rgb, (2, 0, 1))[None]  # NCHW float32
+    rgb = (rgb - cfg.mean) / cfg.std
+    tensor = np.transpose(rgb, (2, 0, 1))[None]  # NCHW
 
     # 2) inference
-    disp = _estimate_depth._sess.run(
-        [_estimate_depth._out], {_estimate_depth._inp: x}
-    )[0][0]                                     # (h,w) in model input size
+    disp = sess.run([out_name], {inp_name: tensor})[0][0]  # (H, W)
 
-    # 3) resize back to the original resolution & return
+    # 3) resize back to original resolution
     h, w = bgr.shape[:2]
     disp = cv2.resize(disp, (w, h), interpolation=cv2.INTER_CUBIC).astype(np.float32)
     return disp

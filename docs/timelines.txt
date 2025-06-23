@@ -1,3 +1,5 @@
+22.06.2025 +1.50 = 9.25: find problematic shoe photos (5538, 5527) where depth is not good enough, try Apple's Depth Pro - it is x10 slower and still not good enough
+22.06.2025 +0.50 = 7.75: first try to run CLI and import masks into Metashape, support Metashape's Python 3.9 (typing.Optional instead of "Type|None"), optional --debug-dir param
 22.06.2025 +0.50 = 7.25: fixing github CI
 22.06.2025 +0.75 = 6.75: creating setup.py, github CI, simple smoke tests, CLI application (for directory processing)
 22.06.2025 +1.25 = 6.00: automatic downloading for Depth Anything v2 model weights (with caching)
