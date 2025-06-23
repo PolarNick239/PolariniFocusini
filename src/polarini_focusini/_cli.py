@@ -12,8 +12,16 @@ VALID_EXTS = (".jpg", ".jpeg", ".png")
 
 
 def process_dir(indir: Path, outdir: Path,
-                sigmas=(0.0, 0.75, 2.0), nbins: int = 20) -> None:
+                sigmas=(0.0, 0.75, 2.0), nbins: int = 20,
+                debug_root: Path | None = None) -> None:
+    """
+    Process all images in *indir* and write masks to *outdir*.
+    If *debug_root* is given, per-image sub-folders with detailed debug
+    artefacts will be created inside it.
+    """
     outdir.mkdir(parents=True, exist_ok=True)
+    if debug_root:
+        debug_root.mkdir(parents=True, exist_ok=True)
 
     # gather files first so tqdm knows the total
     files = [
@@ -21,10 +29,17 @@ def process_dir(indir: Path, outdir: Path,
         if f.suffix.lower() in VALID_EXTS
     ]
 
-    # TODO add progress bar
     for fname in tqdm(files, desc="Generating masks", unit="img"):
         img = cv2.imread(str(fname))
-        mask = detect_infocus_mask(img, sigmas=sigmas, nbins=nbins)
+
+        # one sub-folder per image:  <debug_root>/<cat>/
+        dbg_dir = (debug_root / fname.stem) if debug_root else None
+        mask = detect_infocus_mask(
+            img,
+            sigmas=sigmas,
+            nbins=nbins,
+            debug_dir=str(dbg_dir) if dbg_dir else None,
+        )
 
         out_name = outdir / f"{fname.stem}_mask.png"
         cv2.imwrite(str(out_name), np.uint8(mask) * 255)
@@ -43,10 +58,13 @@ def main() -> None:
                    help="Comma-separated Gaussian sigmas (default: %(default)s)")
     p.add_argument("--nbins",  type=int, default=20,
                    help="Depth-histogram bins (default: %(default)s)")
+    p.add_argument("-d", "--debug-dir", type=Path, default=None,
+                   help="Root folder for debug artefacts (omit to disable)")
     args = p.parse_args()
 
     sigmas = [float(s) for s in args.sigmas.split(",")]
-    process_dir(args.input_dir, args.output_dir, sigmas, args.nbins)
+    process_dir(args.input_dir, args.output_dir,
+                sigmas=sigmas, nbins=args.nbins, debug_root=args.debug_dir)
 
 
 if __name__ == "__main__":
