@@ -41,13 +41,15 @@ def dog(level: int, img: np.ndarray, debug_dir: str) -> None:
 def extremum_mask(mask: np.ndarray, name: str, debug_dir: str) -> None:
     _save(f"{debug_dir}/04_{name}.jpg", 255 * mask.astype(np.uint8))
 
+def mask_after_per_depth_bins_voting(mask: np.ndarray, name: str, debug_dir: str) -> None:
+    _save(f"{debug_dir}/09_{name}.jpg", 255 * mask.astype(np.uint8))
 
 def depth_snapshot(depth: np.ndarray, debug_dir: str) -> None:
-    _save(f"{debug_dir}/09_depth.jpg", depth)
+    _save(f"{debug_dir}/10_depth.jpg", depth)
 
 
 def depth_colored(depth_vis: np.ndarray, debug_dir: str) -> None:
-    _save(f"{debug_dir}/10_depth_with_infocus_highlight.jpg", depth_vis)
+    _save(f"{debug_dir}/11_depth_with_infocus_highlight.jpg", depth_vis)
 
 
 def image_part(name: str, img: np.ndarray, debug_dir: str) -> None:

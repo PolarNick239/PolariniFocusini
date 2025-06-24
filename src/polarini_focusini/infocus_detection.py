@@ -80,6 +80,35 @@ def _mask_from_bins(depth: np.ndarray,
     return np.logical_and(depth >= edges[first],
                           depth <= edges[last + 1])
 
+def _prune_by_focus_votes(mask: np.ndarray,
+                          focus_pts: np.ndarray,
+                          *,
+                          min_votes: int = 10,
+                          connectivity: int = 8) -> np.ndarray:
+    """
+    Keeps only those connected components within *mask*
+    that received votes from ≥ *min_votes* points in *focus_pts*.
+
+    connectivity    : 4 or 8 — how many neighbors to consider
+    """
+    if not np.any(mask):
+        return mask                     # nothing to filter
+
+    # 1) component labels: labels ∈ {0..N}, where 0 is background
+    num, labels = cv2.connectedComponents(mask.astype(np.uint8), connectivity)
+
+    # 2) count votes: each focus point casts +1 vote
+    #    for the component it belongs to
+    votes = np.bincount(labels[focus_pts], minlength=num)  # shape = (num,)
+
+    # 3) determine which components to keep
+    keep = votes >= min_votes
+    keep[0] = False                     # never keep the background
+
+    # 4) create the final pruned mask
+    pruned_mask = keep[labels]
+    return pruned_mask
+
 
 # ──────────────────────────  public API  ───────────────────────────── #
 
@@ -143,10 +172,14 @@ def detect_infocus_mask(image: np.ndarray,
         dbg.plot_depth_bins(counts, edges, span, debug_dir)
 
     # 6) produce final mask
-    mask = _mask_from_bins(depth, edges, span)
+    mask_after_per_depth_bins_voting = _mask_from_bins(depth, edges, span)
+
+    # 6a) prune mask by voting of focus points - to improve results when depth estimation is incorrect, f.e. DSCF5538.JPG
+    mask = _prune_by_focus_votes(mask_after_per_depth_bins_voting, focus_pts, min_votes=10)
 
     # 7) optional extra visual outputs
     if debug_dir:
+        dbg.mask_after_per_depth_bins_voting(mask_after_per_depth_bins_voting, "mask_after_per_depth_bins_voting", debug_dir)
         dbg.depth_snapshot(depth.astype(np.uint16), debug_dir)
 
         # colourise depth + highlight focus bins
@@ -158,7 +191,7 @@ def detect_infocus_mask(image: np.ndarray,
         # split image parts
         img_focus = image.copy();  img_focus[~mask] = 0
         img_defoc = image.copy();  img_defoc[mask]  = 0
-        dbg.image_part("11_image_infocus_part", img_focus, debug_dir)
-        dbg.image_part("12_image_defocus_part", img_defoc, debug_dir)
+        dbg.image_part("12_image_infocus_part", img_focus, debug_dir)
+        dbg.image_part("13_image_defocus_part", img_defoc, debug_dir)
 
     return mask
