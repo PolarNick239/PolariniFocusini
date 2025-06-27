@@ -115,17 +115,19 @@ def _prune_by_focus_votes(mask: np.ndarray,
     return pruned_mask
 
 
-def _mask_from_focus_circles(focus_pts: np.ndarray,
-                             radius: int) -> np.ndarray:
+def _mask_from_focus_circles(focus_pts: np.ndarray, radius: int) -> np.ndarray:
     """
-    Return boolean mask where every True pixel lies inside
-    a filled circle of given *radius* around any True pixel in *focus_pts*.
+    Efficient alternative: use distance transform.
     """
-    # Morphological dilation with an elliptical kernel is faster
-    # than drawing cv2.circle in a loop.
-    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * radius + 1, 2 * radius + 1))
-    dilated = cv2.dilate(focus_pts.astype(np.uint8), se)
-    return dilated.astype(bool)
+    # Make sure focus points are binary (0 or 255)
+    binary = (focus_pts > 0).astype(np.uint8)
+
+    # Compute distance to nearest focus point for each pixel
+    dist_map = cv2.distanceTransform(1 - binary, distanceType=cv2.DIST_L2, maskSize=5)
+
+    # Pixels within radius become True
+    mask = dist_map <= radius
+    return mask
 
 
 # ──────────────────────────  public API  ───────────────────────────── #
