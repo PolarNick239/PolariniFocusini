@@ -54,12 +54,16 @@ def _detect_extremums(dog0: np.ndarray,
 
 def _vote_depth_bins(depth: np.ndarray,
                      focus_mask: np.ndarray,
-                     nbins: int = 20) -> tuple[np.ndarray, np.ndarray,
+                     nbins: int = 120) -> tuple[np.ndarray, np.ndarray,
                                                tuple[int, int]]:
     """Histogram votes → return counts, edges, and winning [first,last] bins."""
     min_d, max_d = depth.min(), depth.max()
     edges = np.linspace(min_d, max_d, nbins + 1)
     counts, _ = np.histogram(depth[focus_mask], bins=edges)
+
+    # Blur values in counts
+    from scipy.ndimage import gaussian_filter1d
+    counts = gaussian_filter1d(counts.astype(float), sigma=3.0)
 
     center = int(np.argmax(counts))
     threshold = counts[center] / 10
@@ -110,13 +114,26 @@ def _prune_by_focus_votes(mask: np.ndarray,
     return pruned_mask
 
 
+def _mask_from_focus_circles(focus_pts: np.ndarray,
+                             radius: int) -> np.ndarray:
+    """
+    Return boolean mask where every True pixel lies inside
+    a filled circle of given *radius* around any True pixel in *focus_pts*.
+    """
+    # Morphological dilation with an elliptical kernel is faster
+    # than drawing cv2.circle in a loop.
+    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * radius + 1, 2 * radius + 1))
+    dilated = cv2.dilate(focus_pts.astype(np.uint8), se)
+    return dilated.astype(bool)
+
+
 # ──────────────────────────  public API  ───────────────────────────── #
 
 def detect_infocus_mask(image: np.ndarray,
                         depth: Optional[np.ndarray] = None,
                         *,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
-                        nbins: int = 20,
+                        nbins: int = 120,
                         debug_dir: Optional[str] = None) -> np.ndarray:
     """
     Detect the in-focus region of *image*.
@@ -171,15 +188,24 @@ def detect_infocus_mask(image: np.ndarray,
     if debug_dir:
         dbg.plot_depth_bins(counts, edges, span, debug_dir)
 
-    # 6) produce final mask
+    # 6) produce initial mask
     mask_after_per_depth_bins_voting = _mask_from_bins(depth, edges, span)
 
-    # 6a) prune mask by voting of focus points - to improve results when depth estimation is incorrect, f.e. DSCF5538.JPG
-    mask = _prune_by_focus_votes(mask_after_per_depth_bins_voting, focus_pts, min_votes=10)
+    # 6b) draw circles around each focus point and intersect with mask
+    height, width = mask_after_per_depth_bins_voting.shape
+    radius = max(1, max(width, height) // 20)  # 5% of image size
+    circles_mask = _mask_from_focus_circles(focus_pts, radius)
+    mask_after_circles_around_focus_points = mask_after_per_depth_bins_voting & circles_mask  # final refined mask
+
+    # 6c) prune mask by voting of focus points - to improve results when depth estimation is incorrect, f.e. DSCF5538.JPG
+    mask_after_pruning = _prune_by_focus_votes(mask_after_circles_around_focus_points, focus_pts, min_votes=10)
+    mask = mask_after_pruning
 
     # 7) optional extra visual outputs
     if debug_dir:
-        dbg.mask_after_per_depth_bins_voting(mask_after_per_depth_bins_voting, "mask_after_per_depth_bins_voting", debug_dir)
+        dbg.mask_after_per_depth_bins_voting(mask_after_per_depth_bins_voting, "01_mask_after_per_depth_bins_voting", debug_dir)
+        dbg.mask_after_per_depth_bins_voting(mask_after_circles_around_focus_points, "02_circles_around_focus_points", debug_dir)
+        dbg.mask_after_per_depth_bins_voting(mask_after_pruning, "03_mask_after_pruning", debug_dir)
         dbg.depth_snapshot(depth.astype(np.uint16), debug_dir)
 
         # colourise depth + highlight focus bins

@@ -13,7 +13,7 @@ VALID_EXTS = (".jpg", ".jpeg", ".png")
 
 
 def process_dir(indir: Path, outdir: Path,
-                sigmas=(0.0, 0.75, 2.0), nbins: int = 20,
+                sigmas=(0.0, 0.75, 2.0), nbins: int = 120,
                 debug_root: Optional[Path] = None) -> None:
     """
     Process all images in *indir* and write masks to *outdir*.
@@ -57,7 +57,7 @@ def main() -> None:
                    help="Directory to place resulting *_mask.png files")
     p.add_argument("--sigmas", default="0.0,0.75,2.0",
                    help="Comma-separated Gaussian sigmas (default: %(default)s)")
-    p.add_argument("--nbins",  type=int, default=20,
+    p.add_argument("--nbins",  type=int, default=120,
                    help="Depth-histogram bins (default: %(default)s)")
     p.add_argument("-d", "--debug-dir", type=Path, default=None,
                    help="Root folder for debug artefacts (omit to disable)")
