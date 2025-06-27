@@ -7,6 +7,7 @@ Author: you
 from __future__ import annotations
 import os
 import cv2
+import time
 import numpy as np
 from typing import Optional
 from scipy.ndimage import maximum_filter
@@ -136,7 +137,8 @@ def detect_infocus_mask(image: np.ndarray,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
                         nbins: int = 120,
                         debug_dir: Optional[str] = None,
-                        ignore_cuda: bool = False) -> np.ndarray:
+                        ignore_cuda: bool = False,
+                        verbose: bool = False) -> np.ndarray:
     """
     Detect the in-focus region of *image*.
 
@@ -155,12 +157,19 @@ def detect_infocus_mask(image: np.ndarray,
     -------
     in_focus_mask : bool ndarray of shape H×W
     """
+    t_start = time.time()
+
+    t0 = time.time()
+
     # 0) obtain or verify depth-map
     if depth is None:
-        depth = _estimate_depth(image, ignore_cuda=ignore_cuda)
+        depth = _estimate_depth(image, ignore_cuda=ignore_cuda, verbose=verbose)
     else:
         assert depth.shape == image.shape[:2], \
             "Image and depth map sizes must match"
+
+    timings_depth = time.time() - t0
+    t0 = time.time()
 
     # 1) grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
@@ -179,6 +188,9 @@ def detect_infocus_mask(image: np.ndarray,
         for lvl, d in enumerate(dogs):
             dbg.dog(lvl + 1, d, debug_dir)         # level indices start at 1
 
+    timings_image_pyramids = time.time() - t0
+    t0 = time.time()
+
     # 4) extremums (scale-space NMS)
     focus_pts, thresh = _detect_extremums(dogs[0], dogs[1], 99., debug_dir)
     if debug_dir:
@@ -187,14 +199,23 @@ def detect_infocus_mask(image: np.ndarray,
                                   [1, 25, 50, 75, 99],
                                   debug_dir)
 
+    timings_extremums = time.time() - t0
+    t0 = time.time()
+
     # 5) vote depth bins
     counts, edges, span = _vote_depth_bins(depth, focus_pts, nbins)
     if debug_dir:
         dbg.plot_depth_bins(counts, edges, span, debug_dir)
 
-    # 6) produce initial mask
+    timings_voting = time.time() - t0
+    t0 = time.time()
+
+    # 6a) produce initial mask
     mask_after_per_depth_bins_voting = _mask_from_bins(depth, edges, span)
     mask = mask_after_per_depth_bins_voting
+
+    timings_masks_a = time.time() - t0
+    t0 = time.time()
 
     # 6b) [optionally] draw circles around each focus point and limit mask to them - to improve results when depth estimation is incorrect, f.e. DSCF5508.JPG
     if limit_with_circles_around_focus_points:
@@ -203,12 +224,18 @@ def detect_infocus_mask(image: np.ndarray,
         circles_mask = _mask_from_focus_circles(focus_pts, radius)
         mask_after_circles_around_focus_points = mask & circles_mask  # final refined mask
         mask = mask_after_circles_around_focus_points
+
+        timings_masks_b = time.time() - t0
+        t0 = time.time()
     else:
         mask_after_circles_around_focus_points = None
+        timings_masks_b = 0.0
 
     # 6c) prune mask by voting of focus points - to improve results when depth estimation is incorrect, f.e. DSCF5538.JPG
     mask_after_pruning = _prune_by_focus_votes(mask, focus_pts, min_votes=10)
     mask = mask_after_pruning
+
+    timings_masks_c = time.time() - t0
 
     # 7) optional extra visual outputs
     if debug_dir:
@@ -229,5 +256,22 @@ def detect_infocus_mask(image: np.ndarray,
         img_defoc = image.copy();  img_defoc[mask]  = 0
         dbg.image_part("12_image_infocus_part", img_focus, debug_dir)
         dbg.image_part("13_image_defocus_part", img_defoc, debug_dir)
+
+    t_total = time.time() - t_start
+
+    if verbose:
+        def percents(val): return str(round(100 * val / t_total)) + "%"
+
+        print(
+            f"image processed in {t_total:.2f} secs = "
+            f"{percents(timings_depth)} depth + "
+            f"{percents(timings_image_pyramids)} pyramids + "
+            f"{percents(timings_extremums)} extremums + "
+            f"{percents(timings_voting)} voting + "
+            f"{percents(timings_masks_a + timings_masks_b + timings_masks_c)} masks "
+            f"({percents(timings_masks_a)} + "
+            f"{percents(timings_masks_b)} + "
+            f"{percents(timings_masks_c)})"
+        )
 
     return mask

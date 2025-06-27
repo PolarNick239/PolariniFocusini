@@ -119,7 +119,8 @@ def _ensure_weights(cfg: DepthEstimationConfig) -> str:
 
 # ─────────────────────────── inference API ───────────────────────────────────
 
-def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None, *, ignore_cuda = False) -> np.ndarray:
+def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None, *,
+                    ignore_cuda = False, verbose = False) -> np.ndarray:
     """Estimate depth/disparity map for *bgr* using the chosen backend."""
 
     if cfg is None:
@@ -140,9 +141,13 @@ def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None
             cuda_provider = "CUDAExecutionProvider"
             try:
                 sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cuda_provider])
+                if verbose:
+                    print("ONNX session providers:")
+                    print(sess.get_providers())
+                    print("ONNX: CUDA execution session attempted to be created")
             except RuntimeError as e:
                 if "install" in e.args[0] and "CUDA" in e.args[0] and "cuDNN" in e.args[0]:
-                    print("CUDA 12 can be downloaded here: https://developer.nvidia.com/cuda-toolkit", file=sys.stderr)
+                    print("CUDA 12.2 can be downloaded here: https://developer.nvidia.com/cuda-12-2-0-download-archive?target_os=Windows&target_arch=x86_64&target_version=11&target_type=exe_local", file=sys.stderr)
                     print("cuDNN 9 can be downloaded here: https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/cudnn-windows-x86_64-9.10.2.21_cuda12-archive.zip", file=sys.stderr)
                     print("unzip cuDNN 9 archive and copy all dlls from its bin subdir into C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.9\\bin", file=sys.stderr)
                     print("You can read more about ONNX CUDA requirements here: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements", file=sys.stderr)
@@ -152,6 +157,8 @@ def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None
         if sess is None:
             cpu_provider = "CPUExecutionProvider"
             sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cpu_provider])
+            if verbose:
+                print("ONNX: CPU execution session created")
 
         inp_name = sess.get_inputs()[0].name
         out_name = sess.get_outputs()[0].name

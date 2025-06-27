@@ -16,7 +16,8 @@ def process_dir(indir: Path, outdir: Path,
                 limit_with_circles_around_focus_points: bool = False,
                 sigmas=(0.0, 0.75, 2.0), nbins: int = 120,
                 debug_root: Optional[Path] = None,
-                ignore_cuda: bool = False) -> None:
+                ignore_cuda: bool = False,
+                verbose: bool = False) -> None:
     """
     Process all images in *indir* and write masks to *outdir*.
     If *debug_root* is given, per-image sub-folders with detailed debug
@@ -44,6 +45,7 @@ def process_dir(indir: Path, outdir: Path,
             nbins=nbins,
             debug_dir=str(dbg_dir) if dbg_dir else None,
             ignore_cuda=ignore_cuda,
+            verbose=verbose,
         )
 
         out_name = outdir / f"{fname.stem}_mask.png"
@@ -69,12 +71,14 @@ def main() -> None:
                    help="Root folder for debug artefacts (omit to disable)")
     p.add_argument("--ignore-cuda", action="store_true",
                    help="Run inference on CPU, ignoring CUDA (default: try to use CUDA if available)")
+    p.add_argument("--verbose", action="store_true",
+                   help="Add verbose output, includes profiling timings for processing steps")
     args = p.parse_args()
 
     sigmas = [float(s) for s in args.sigmas.split(",")]
     process_dir(args.input_dir, args.output_dir,
                 limit_with_circles_around_focus_points=args.limit_with_circles, sigmas=sigmas, nbins=args.nbins,
-                debug_root=args.debug_dir, ignore_cuda=args.ignore_cuda)
+                debug_root=args.debug_dir, ignore_cuda=args.ignore_cuda, verbose=args.verbose)
 
 
 if __name__ == "__main__":
