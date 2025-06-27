@@ -1,3 +1,4 @@
+27.06.2025 +0.25 = 12.50: big speedup for --limit-with-circles: replace ellipse morphology (it is non-separable - thus slow) with distanceTransform
 27.06.2025 +0.50 = 12.25: CLI option: --verbose to see profiling timings (currently Depth Anything is the bottleneck due to CPU usage)
 27.06.2025 +0.75 = 11.75: fixing CUDA provider execution (installing CUDA 12 and cuDNN 9), adding CLI option --ignore-cuda to suppress warnings
 27.06.2025 +0.50 = 11.00: add optional parameter to enable in-focus masks limiting with circles around focus points
