@@ -35,7 +35,7 @@ setup(
 
     # ────────────────────────── dependencies ────────────────────────── #
     install_requires=[
-        "onnxruntime>=1.18.0",       # **mandatory** CPU runtime
+        "onnxruntime>=1.18.1",       # **mandatory** CPU runtime
         "opencv-python>=4.8.0",
         "numpy>=1.23.0",
         "scipy>=1.10.0",
@@ -47,8 +47,7 @@ setup(
     extras_require={
         # Users with GPUs can install:  pip install polarini-focusini[cuda]
         "cuda": [
-            "onnxruntime-gpu>=1.17.0",
-            "onnxruntime-cuda>=1.17.0",
+            "onnxruntime-gpu>=1.18.1",
         ],
         "dev": [
             "pytest>=8.0.0",         # run tests

@@ -135,7 +135,8 @@ def detect_infocus_mask(image: np.ndarray,
                         limit_with_circles_around_focus_points: bool = False,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
                         nbins: int = 120,
-                        debug_dir: Optional[str] = None) -> np.ndarray:
+                        debug_dir: Optional[str] = None,
+                        ignore_cuda: bool = False) -> np.ndarray:
     """
     Detect the in-focus region of *image*.
 
@@ -148,6 +149,7 @@ def detect_infocus_mask(image: np.ndarray,
     sigmas     : Gaussian sigmas for the PoG
     nbins      : histogram bins for depth voting
     debug_dir  : if given, all intermediate artefacts are written here
+    ignore_cuda : don't try to use CUDA
 
     Returns
     -------
@@ -155,7 +157,7 @@ def detect_infocus_mask(image: np.ndarray,
     """
     # 0) obtain or verify depth-map
     if depth is None:
-        depth = _estimate_depth(image)
+        depth = _estimate_depth(image, ignore_cuda=ignore_cuda)
     else:
         assert depth.shape == image.shape[:2], \
             "Image and depth map sizes must match"

@@ -1,3 +1,4 @@
+import sys
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Tuple, Optional
@@ -51,9 +52,6 @@ class DepthEstimationConfig:
     input_size: Optional[Tuple[int, int]] = None  # (W, H)
     mean: Optional[np.ndarray] = None
     std: Optional[np.ndarray] = None
-
-    # ONNX Runtime execution provider
-    provider: str = "CPUExecutionProvider"  # set to "CUDAExecutionProvider" if available
 
     # cache organisation
     app_name: str = "polarini_focusini"
@@ -121,7 +119,7 @@ def _ensure_weights(cfg: DepthEstimationConfig) -> str:
 
 # ─────────────────────────── inference API ───────────────────────────────────
 
-def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None) -> np.ndarray:
+def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None, *, ignore_cuda = False) -> np.ndarray:
     """Estimate depth/disparity map for *bgr* using the chosen backend."""
 
     if cfg is None:
@@ -135,7 +133,26 @@ def _estimate_depth(bgr: np.ndarray, cfg: Optional[DepthEstimationConfig] = None
     if model_path not in _estimate_depth._cache:
         opts = ort.SessionOptions()
         opts.log_severity_level = 3  # quiet
-        sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cfg.provider])
+
+        sess = None
+
+        if not ignore_cuda:
+            cuda_provider = "CUDAExecutionProvider"
+            try:
+                sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cuda_provider])
+            except RuntimeError as e:
+                if "install" in e.args[0] and "CUDA" in e.args[0] and "cuDNN" in e.args[0]:
+                    print("CUDA 12 can be downloaded here: https://developer.nvidia.com/cuda-toolkit", file=sys.stderr)
+                    print("cuDNN 9 can be downloaded here: https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/cudnn-windows-x86_64-9.10.2.21_cuda12-archive.zip", file=sys.stderr)
+                    print("unzip cuDNN 9 archive and copy all dlls from its bin subdir into C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.9\\bin", file=sys.stderr)
+                    print("You can read more about ONNX CUDA requirements here: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements", file=sys.stderr)
+                    print("You can use --ignore-cuda to suppress this error", file=sys.stderr)
+                    print("Can't use CUDA, falling back to CPU...", file=sys.stderr)
+
+        if sess is None:
+            cpu_provider = "CPUExecutionProvider"
+            sess = ort.InferenceSession(model_path, sess_options=opts, providers=[cpu_provider])
+
         inp_name = sess.get_inputs()[0].name
         out_name = sess.get_outputs()[0].name
         _estimate_depth._cache[model_path] = (sess, inp_name, out_name)
