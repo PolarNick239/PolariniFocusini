@@ -1,3 +1,4 @@
+27.06.2025 +0.50 = 11.00: add optional parameter to enable in-focus masks limiting with circles around focus points
 24.06.2025 +1.00 = 10.50: fix DSCF5508.JPG via drawing circles for in-focus masking only around in-focus points (i.e. extremums from DoG high freqs)
 24.06.2025 +0.25 = 9.50: fix DSCF5538.JPG via filtering connected components by DoG in-focus extrema voting (when depth estimation has errors)
 22.06.2025 +1.50 = 9.25: find problematic shoe photos (5538, 5527) where depth is not good enough, try Apple's Depth Pro - it is x10 slower and still not good enough

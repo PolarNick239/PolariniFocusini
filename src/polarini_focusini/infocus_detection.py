@@ -132,6 +132,7 @@ def _mask_from_focus_circles(focus_pts: np.ndarray,
 def detect_infocus_mask(image: np.ndarray,
                         depth: Optional[np.ndarray] = None,
                         *,
+                        limit_with_circles_around_focus_points: bool = False,
                         sigmas: list[float] = (0.0, 0.75, 2.0),
                         nbins: int = 120,
                         debug_dir: Optional[str] = None) -> np.ndarray:
@@ -143,6 +144,7 @@ def detect_infocus_mask(image: np.ndarray,
     image      : BGR uint8 image (H×W×3)
     depth      : float32 depth map (H×W) – if **None**, it will be
                  estimated on-the-fly with `_estimate_depth`
+    limit_with_circles_around_focus_points : whether to restrict mask to circular regions around focus points (default: False)
     sigmas     : Gaussian sigmas for the PoG
     nbins      : histogram bins for depth voting
     debug_dir  : if given, all intermediate artefacts are written here
@@ -190,21 +192,27 @@ def detect_infocus_mask(image: np.ndarray,
 
     # 6) produce initial mask
     mask_after_per_depth_bins_voting = _mask_from_bins(depth, edges, span)
+    mask = mask_after_per_depth_bins_voting
 
-    # 6b) draw circles around each focus point and intersect with mask
-    height, width = mask_after_per_depth_bins_voting.shape
-    radius = max(1, max(width, height) // 20)  # 5% of image size
-    circles_mask = _mask_from_focus_circles(focus_pts, radius)
-    mask_after_circles_around_focus_points = mask_after_per_depth_bins_voting & circles_mask  # final refined mask
+    # 6b) [optionally] draw circles around each focus point and limit mask to them - to improve results when depth estimation is incorrect, f.e. DSCF5508.JPG
+    if limit_with_circles_around_focus_points:
+        height, width = image.shape[:2]
+        radius = max(1, max(width, height) // 20)  # 5% of image size
+        circles_mask = _mask_from_focus_circles(focus_pts, radius)
+        mask_after_circles_around_focus_points = mask & circles_mask  # final refined mask
+        mask = mask_after_circles_around_focus_points
+    else:
+        mask_after_circles_around_focus_points = None
 
     # 6c) prune mask by voting of focus points - to improve results when depth estimation is incorrect, f.e. DSCF5538.JPG
-    mask_after_pruning = _prune_by_focus_votes(mask_after_circles_around_focus_points, focus_pts, min_votes=10)
+    mask_after_pruning = _prune_by_focus_votes(mask, focus_pts, min_votes=10)
     mask = mask_after_pruning
 
     # 7) optional extra visual outputs
     if debug_dir:
         dbg.mask_after_per_depth_bins_voting(mask_after_per_depth_bins_voting, "01_mask_after_per_depth_bins_voting", debug_dir)
-        dbg.mask_after_per_depth_bins_voting(mask_after_circles_around_focus_points, "02_circles_around_focus_points", debug_dir)
+        if mask_after_circles_around_focus_points is not None:
+            dbg.mask_after_per_depth_bins_voting(mask_after_circles_around_focus_points, "02_circles_around_focus_points", debug_dir)
         dbg.mask_after_per_depth_bins_voting(mask_after_pruning, "03_mask_after_pruning", debug_dir)
         dbg.depth_snapshot(depth.astype(np.uint16), debug_dir)
 
