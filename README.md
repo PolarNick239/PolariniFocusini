@@ -20,6 +20,8 @@ Automated **in-focus region detector** that blends monocular depth estimation wi
 4. Keeps only strong extrema → votes for focus → finds dominant depth bins.  
 5. Saves every intermediate step to a per-image `debug/` folder for easy inspection.
 
+https://github.com/user-attachments/assets/c4d643fd-d53f-4115-a83f-1fb934b9f4ab
+
 # Live coding walkthrough 🎬
 
 Watch the 90-minute live “vibe-coding” session that produced this repo (**English code** + **English subs** + Russian-language commentary):
